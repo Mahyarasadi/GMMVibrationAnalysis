@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
+from scipy.spatial.distance import pdist, squareform
+from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 import os
 os.environ["LOKY_MAX_CPU_COUNT"] = "8"
@@ -50,11 +52,29 @@ best_k = 10
 kmeans = KMeans(n_clusters=best_k, random_state=0, n_init=10)
 kmeans.fit(df_scaled)
 
-def compute_distances(data, model):
-    """Compute each sample's distance to its nearest cluster center."""
+def compute_distances(data, model, metric='euclidean'):
+    """Compute each sample's distance to its nearest cluster center.
+    
+    Args:
+        data: Input data array
+        model: Fitted KMeans model
+        metric: Distance metric - 'euclidean' (default) or 'pearson'
+    
+    Returns:
+        Array of distances
+    """
     centers = model.cluster_centers_
     labels = model.predict(data)
-    distances = np.linalg.norm(data - centers[labels], axis=1)
+    
+    if metric == 'euclidean':
+        distances = np.linalg.norm(data - centers[labels], axis=1)
+    elif metric == 'pearson':
+        # Pearson correlation distance: 1 - correlation coefficient
+        distances = np.array([1 - pearsonr(data[i], centers[labels[i]])[0] 
+                             for i in range(len(data))])
+    else:
+        raise ValueError(f"Unknown metric: {metric}. Use 'euclidean' or 'pearson'")
+    
     return distances
 
 train_distances = compute_distances(df_scaled.values, kmeans)
